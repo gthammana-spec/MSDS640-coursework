@@ -198,4 +198,11 @@ YouTube content creators and brands need to understand audience sentiment to imp
 
 ---
 
-## 7. Project Timeline
+## 7. Project Timeline,
+
+Jun 30 - Jul 2 (Phase 1): Problem definition, data collection	Project proposal, GitHub setup
+Jul 7 - Jul 9	(Phase 2): EDA, preprocessing, feature engineering	EDA notebook, cleaned data in DB
+Jul 14 - Jul 16	(Phase 3): Baseline models, error analysis	Baseline model notebook
+Jul 21 - Jul 23	(Phase 4): Advanced models (LSTM, BERT)	Advanced model notebooks
+Jul 28 - Jul 30	(Phase 5): Hyperparameter tuning, comparison	Model comparison report
+Aug 4 - Aug 6	(Phase 6): Final evaluation, presentation	Final report, presentation
