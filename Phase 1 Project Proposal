@@ -1,0 +1,201 @@
+# MSDS 640 Capstone Project - Phase 1
+## Problem Definition & Project Plan
+
+**Student Name:** Ganesh Thammana  
+**Date:** July 2, 2026  
+**Project Title:** Sentiment Analysis of YouTube Comments Using Deep Learning
+
+---
+
+## 1. Business Understanding
+
+### 1.1 Problem Statement
+YouTube content creators and brands need to understand audience sentiment to improve content strategy and engagement. Manual analysis of thousands of comments is impractical. This project aims to build an automated sentiment classification system for YouTube comments.
+
+### 1.2 Objectives
+- Develop a machine learning model to classify YouTube comments into positive, negative, and neutral sentiment
+- Compare traditional ML approaches (TF-IDF + Logistic Regression) with deep learning models (LSTM, BERT)
+- Achieve F1-score > 0.80 on test set
+- Handle unique challenges of YouTube comments (emojis, slang, spam)
+
+### 1.3 Success Criteria
+- **Primary:** F1-score ≥ 0.80 on balanced test set
+- **Secondary:** Advanced model outperforms baseline by ≥ 10% F1-score
+- **Tertiary:** Model generalizes across different video categories
+
+### 1.4 Business Value
+- Content creators can identify negative feedback quickly
+- Brands can monitor sentiment for marketing campaigns
+- Platform moderation can prioritize toxic comments
+- Researchers can analyze public opinion at scale
+
+---
+
+## 2. Research Question & Hypothesis
+
+### 2.1 Research Question
+**"Can transformer-based models (BERT/DistilBERT) significantly outperform traditional machine learning approaches for sentiment classification of YouTube comments?"**
+
+### 2.2 Hypothesis (Testable, Falsifiable, Reproducible)
+
+**H1 (Primary):** A fine-tuned DistilBERT model will achieve F1-score > 0.80 on classifying YouTube comments into positive/negative/neutral sentiment.
+
+**H2 (Comparative):** DistilBERT will outperform a TF-IDF + Logistic Regression baseline by at least 10% in F1-score.
+
+**H3 (Feature Engineering):** Including emoji features and comment metadata (likes, word count) will improve model performance by at least 3% compared to text-only models.
+
+**Null Hypothesis:** There is no significant difference (p > 0.05) between transformer models and traditional ML approaches for this task.
+
+### 2.3 Why This is Testable
+- Clear metrics: F1-score, accuracy, precision, recall
+- Defined threshold: 0.80 F1-score
+- Comparative baseline: TF-IDF + Logistic Regression
+- Statistical testing: McNemar's test for model comparison
+
+### 2.4 Why This is Falsifiable
+- If DistilBERT achieves F1 < 0.80, H1 is rejected
+- If improvement over baseline < 10%, H2 is rejected
+- Results can prove hypotheses wrong
+
+### 2.5 Why This is Reproducible
+- Public dataset from Kaggle
+- Fixed train/test split (80/20, random_state=42)
+- All code in GitHub with requirements.txt
+- Documented preprocessing steps
+- Model hyperparameters specified
+
+---
+
+## 3. Data Understanding
+
+### 3.1 Data Source
+**Primary:** [YouTube Comments Sentiment Dataset](https://www.kaggle.com/datasets/amaanpoonawala/youtube-comments-sentiment-dataset) (1M+ comments with labels)
+
+**Alternative:** Collect custom data using YouTube Data API v3
+
+### 3.2 Data Description
+- **Size:** ~1,000,000 comments
+- **Features:** comment text, video ID, likes, timestamp
+- **Target:** Sentiment labels (positive, negative, neutral)
+- **Format:** CSV
+
+### 3.3 Data Quality Considerations
+- **Spam comments:** Need filtering
+- **Class imbalance:** May need SMOTE or class weights
+- **Emojis:** Require special handling
+- **Slang/abbreviations:** Need normalization
+- **Multiple languages:** Filter to English only
+
+### 3.4 Exploratory Questions
+- What is the distribution of sentiment labels?
+- What is the average comment length?
+- How many comments contain emojis?
+- Are there spam patterns?
+- Is there correlation between likes and sentiment?
+
+---
+
+## 4. Methodology (CRISP-DM Framework)
+
+### Phase 1: Business Understanding ✓ (Current Phase)
+- Define problem and success criteria
+- Formulate testable hypotheses
+- Create project plan
+
+### Phase 2: Data Understanding & Preparation (Week 1-2)
+**Tasks:**
+- Load and explore dataset
+- EDA: distributions, correlations, visualizations
+- Data cleaning: remove spam, handle missing values
+- Feature engineering: extract emoji features, metadata
+- Train/validation/test split (70/15/15)
+
+**Deliverables:**
+- EDA notebook with visualizations
+- Cleaned dataset saved to database
+- Feature engineering pipeline
+
+### Phase 3: Baseline Model Development (Week 2-3)
+**Tasks:**
+- Implement TF-IDF + Logistic Regression baseline
+- Implement Naive Bayes baseline
+- Evaluate on validation set
+- Error analysis: what does baseline get wrong?
+
+**Deliverables:**
+- Baseline model notebook
+- Performance metrics (F1, precision, recall, confusion matrix)
+- Error analysis report
+
+### Phase 4: Advanced Model Development (Week 3-5)
+**Tasks:**
+- Implement LSTM model
+- Fine-tune DistilBERT model
+- Hyperparameter tuning
+- Ensemble methods (if time permits)
+- Compare all models statistically
+
+**Deliverables:**
+- Advanced model notebooks
+- Model comparison table
+- Statistical significance tests
+
+### Phase 5: Evaluation & Deployment (Week 5-6)
+**Tasks:**
+- Final evaluation on test set
+- Cross-validation across video categories
+- Create simple prediction API or Streamlit app
+- Document limitations and future work
+
+**Deliverables:**
+- Final report
+- Presentation slides
+- GitHub repository with all code
+
+---
+
+## 5. Technical Stack
+
+### 5.1 Programming & Libraries
+- **Language:** Python 3.9+
+- **Data:** pandas, numpy
+- **Visualization:** matplotlib, seaborn, plotly
+- **NLP:** nltk, spacy, emoji
+- **Traditional ML:** scikit-learn
+- **Deep Learning:** PyTorch, transformers (HuggingFace)
+- **Database:** SQLite / PostgreSQL
+
+### 5.2 Development Environment
+- **IDE:** Google Colab / Jupyter Notebook
+- **Version Control:** Git + GitHub
+- **Compute:** Google Colab GPU (free tier)
+
+### 5.3 Models to Implement
+1. **Baseline:** TF-IDF + Logistic Regression
+2. **Baseline:** TF-IDF + Naive Bayes
+3. **Deep Learning:** LSTM with GloVe embeddings
+4. **Transformer:** DistilBERT (fine-tuned)
+5. **Optional:** Ensemble of top models
+
+---
+
+## 6. Evaluation Metrics
+
+### 6.1 Primary Metrics
+- **F1-Score (macro):** Balances precision and recall across all classes
+- **Confusion Matrix:** Understand misclassifications
+- **Classification Report:** Per-class precision, recall, F1
+
+### 6.2 Secondary Metrics
+- **Accuracy:** Overall correctness (less important if imbalanced)
+- **AUC-ROC:** For binary classification variants
+- **Cohen's Kappa:** Agreement beyond chance
+
+### 6.3 Statistical Testing
+- **McNemar's Test:** Compare two models on same test set
+- **Paired t-test:** Compare cross-validation scores
+- **Significance level:** α = 0.05
+
+---
+
+## 7. Project Timeline
