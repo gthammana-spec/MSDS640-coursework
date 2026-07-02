@@ -1,0 +1,308 @@
+# imdb_data_loader.py
+
+import pandas as pd
+import numpy as np
+import re
+import nltk
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
+from nltk.stem import WordNetLemmatizer
+from bs4 import BeautifulSoup
+import warnings
+warnings.filterwarnings('ignore')
+
+# Download required NLTK data
+nltk.download('punkt')
+nltk.download('stopwords')
+nltk.download('wordnet')
+nltk.download('omw-1.4')
+
+class IMDBPreprocessor:
+    def __init__(self, remove_stopwords=True, lemmatize=True):
+        """
+        Initialize IMDB preprocessor
+        
+        Args:
+            remove_stopwords: Whether to remove stopwords
+            lemmatize: Whether to lemmatize words
+        """
+        self.remove_stopwords = remove_stopwords
+        self.lemmatize = lemmatize
+        self.stop_words = set(stopwords.words('english'))
+        self.lemmatizer = WordNetLemmatizer()
+        
+    def load_data(self, file_path):
+        """
+        Load IMDB dataset from CSV
+        
+        Args:
+            file_path: Path to CSV file
+            
+        Returns:
+            DataFrame with reviews and sentiments
+        """
+        df = pd.read_csv(file_path)
+        
+        # Check column names (different datasets have different names)
+        if 'review' in df.columns and 'sentiment' in df.columns:
+            pass
+        elif 'text' in df.columns and 'label' in df.columns:
+            df.rename(columns={'text': 'review', 'label': 'sentiment'}, inplace=True)
+        else:
+            print(f"Columns found: {df.columns.tolist()}")
+            raise ValueError("Expected columns 'review' and 'sentiment' or 'text' and 'label'")
+        
+        print(f"Loaded {len(df)} reviews")
+        print(f"Sentiment distribution:\n{df['sentiment'].value_counts()}")
+        
+        return df
+    
+    def remove_html_tags(self, text):
+        """Remove HTML tags from text"""
+        if pd.isna(text):
+            return ""
+        soup = BeautifulSoup(text, "html.parser")
+        return soup.get_text()
+    
+    def remove_urls(self, text):
+        """Remove URLs from text"""
+        return re.sub(r'http\S+|www\S+|https\S+', '', text, flags=re.MULTILINE)
+    
+    def remove_special_chars(self, text):
+        """Remove special characters but keep basic punctuation"""
+        # Keep letters, numbers, and basic punctuation
+        text = re.sub(r'[^a-zA-Z0-9\s!?.,]', ' ', text)
+        # Remove extra whitespace
+        text = re.sub(r'\s+', ' ', text).strip()
+        return text
+    
+    def expand_contractions(self, text):
+        """Expand common contractions"""
+        contractions = {
+            "ain't": "am not",
+            "aren't": "are not",
+            "can't": "cannot",
+            "couldn't": "could not",
+            "didn't": "did not",
+            "doesn't": "does not",
+            "don't": "do not",
+            "hadn't": "had not",
+            "hasn't": "has not",
+            "haven't": "have not",
+            "isn't": "is not",
+            "wasn't": "was not",
+            "weren't": "were not",
+            "won't": "will not",
+            "wouldn't": "would not",
+            "i'm": "i am",
+            "i've": "i have",
+            "i'll": "i will",
+            "i'd": "i would",
+            "you're": "you are",
+            "you've": "you have",
+            "you'll": "you will",
+            "you'd": "you would",
+            "he's": "he is",
+            "she's": "she is",
+            "it's": "it is",
+            "we're": "we are",
+            "they're": "they are",
+            "that's": "that is",
+            "there's": "there is",
+            "what's": "what is"
+        }
+        
+        for contraction, expansion in contractions.items():
+            text = re.sub(r'\b' + contraction + r'\b', expansion, text, flags=re.IGNORECASE)
+        
+        return text
+    
+    def clean_text(self, text):
+        """
+        Complete text cleaning pipeline
+        
+        Args:
+            text: Raw review text
+            
+        Returns:
+            Cleaned text
+        """
+        if pd.isna(text):
+            return ""
+        
+        # Convert to string
+        text = str(text)
+        
+        # Remove HTML tags
+        text = self.remove_html_tags(text)
+        
+        # Remove URLs
+        text = self.remove_urls(text)
+        
+        # Expand contractions
+        text = self.expand_contractions(text)
+        
+        # Convert to lowercase
+        text = text.lower()
+        
+        # Remove special characters
+        text = self.remove_special_chars(text)
+        
+        return text
+    
+    def tokenize_and_process(self, text):
+        """
+        Tokenize and optionally remove stopwords and lemmatize
+        
+        Args:
+            text: Cleaned text
+            
+        Returns:
+            Processed text string
+        """
+        # Tokenize
+        tokens = word_tokenize(text)
+        
+        # Remove stopwords if specified
+        if self.remove_stopwords:
+            tokens = [word for word in tokens if word not in self.stop_words and len(word) > 2]
+        
+        # Lemmatize if specified
+        if self.lemmatize:
+            tokens = [self.lemmatizer.lemmatize(word) for word in tokens]
+        
+        return ' '.join(tokens)
+    
+    def extract_features(self, df):
+        """
+        Extract metadata features from reviews
+        
+        Args:
+            df: DataFrame with 'review' column
+            
+        Returns:
+            DataFrame with additional feature columns
+        """
+        df = df.copy()
+        
+        # Text length features
+        df['char_count'] = df['review'].str.len()
+        df['word_count'] = df['review'].str.split().str.len()
+        df['avg_word_length'] = df['char_count'] / df['word_count']
+        
+        # Punctuation features
+        df['exclamation_count'] = df['review'].str.count('!')
+        df['question_count'] = df['review'].str.count('\?')
+        df['uppercase_ratio'] = df['review'].apply(
+            lambda x: sum(1 for c in str(x) if c.isupper()) / len(str(x)) if len(str(x)) > 0 else 0
+        )
+        
+        # Sentiment indicators (simple heuristic)
+        positive_words = ['good', 'great', 'excellent', 'amazing', 'wonderful', 'fantastic', 
+                         'love', 'best', 'perfect', 'brilliant', 'outstanding']
+        negative_words = ['bad', 'terrible', 'awful', 'horrible', 'worst', 'hate', 
+                         'poor', 'disappointing', 'waste', 'boring']
+        
+        df['positive_word_count'] = df['review'].str.lower().apply(
+            lambda x: sum(word in str(x) for word in positive_words)
+        )
+        df['negative_word_count'] = df['review'].str.lower().apply(
+            lambda x: sum(word in str(x) for word in negative_words)
+        )
+        
+        return df
+    
+    def encode_labels(self, df, label_column='sentiment'):
+        """
+        Encode sentiment labels to binary (0=negative, 1=positive)
+        
+        Args:
+            df: DataFrame with sentiment column
+            label_column: Name of sentiment column
+            
+        Returns:
+            DataFrame with encoded labels
+        """
+        df = df.copy()
+        
+        # Map sentiment to binary
+        sentiment_map = {
+            'positive': 1,
+            'negative': 0,
+            'pos': 1,
+            'neg': 0,
+            1: 1,
+            0: 0
+        }
+        
+        df['label'] = df[label_column].map(sentiment_map)
+        
+        # Check for any unmapped values
+        if df['label'].isna().any():
+            print(f"Warning: Found unmapped sentiment values: {df[df['label'].isna()][label_column].unique()}")
+        
+        return df
+    
+    def preprocess_dataframe(self, df):
+        """
+        Full preprocessing pipeline
+        
+        Args:
+            df: Input DataFrame with 'review' and 'sentiment' columns
+            
+        Returns:
+            Preprocessed DataFrame
+        """
+        print("Starting preprocessing pipeline...")
+        
+        # Extract features from raw text
+        print("Step 1: Extracting features...")
+        df = self.extract_features(df)
+        
+        # Clean text
+        print("Step 2: Cleaning text...")
+        df['cleaned_text'] = df['review'].apply(self.clean_text)
+        
+        # Tokenize and process
+        print("Step 3: Tokenizing and processing...")
+        df['processed_text'] = df['cleaned_text'].apply(self.tokenize_and_process)
+        
+        # Remove empty reviews
+        df = df[df['processed_text'].str.len() > 0]
+        
+        # Encode labels
+        print("Step 4: Encoding labels...")
+        df = self.encode_labels(df)
+        
+        print(f"Preprocessing complete! {len(df)} reviews remaining.")
+        
+        return df
+
+
+# Example usage
+if __name__ == "__main__":
+    # Initialize preprocessor
+    preprocessor = IMDBPreprocessor(
+        remove_stopwords=True,
+        lemmatize=True
+    )
+    
+    # Load data
+    df = preprocessor.load_data('IMDB Dataset.csv')
+    
+    print("\nSample raw review:")
+    print(df['review'].iloc[0][:200])
+    
+    # Preprocess
+    df_processed = preprocessor.preprocess_dataframe(df)
+    
+    print("\nSample processed review:")
+    print(df_processed['processed_text'].iloc[0][:200])
+    
+    # Save processed data
+    df_processed.to_csv('imdb_processed.csv', index=False)
+    
+    print("\nPreprocessing Summary:")
+    print(f"Total reviews: {len(df_processed)}")
+    print(f"Average word count: {df_processed['word_count'].mean():.1f}")
+    print(f"Label distribution:\n{df_processed['label'].value_counts()}")
