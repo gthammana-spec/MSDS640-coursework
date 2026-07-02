@@ -1,0 +1,201 @@
+# imdb_database_setup.py
+
+import sqlite3
+import psycopg2
+from sqlalchemy import create_engine, Column, Integer, String, Text, Float, Boolean, DateTime
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+from datetime import datetime
+import pandas as pd
+
+Base = declarative_base()
+
+class IMDBReview(Base):
+    __tablename__ = 'imdb_reviews'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    review_text = Column(Text, nullable=False)
+    cleaned_text = Column(Text)
+    processed_text = Column(Text)
+    sentiment = Column(String(20))  # 'positive' or 'negative'
+    label = Column(Integer)  # 0 or 1
+    
+    # Features
+    char_count = Column(Integer)
+    word_count = Column(Integer)
+    avg_word_length = Column(Float)
+    exclamation_count = Column(Integer)
+    question_count = Column(Integer)
+    uppercase_ratio = Column(Float)
+    positive_word_count = Column(Integer)
+    negative_word_count = Column(Integer)
+    
+    # Model predictions
+    predicted_sentiment = Column(String(20))
+    prediction_confidence = Column(Float)
+    predicted_by_model = Column(String(100))
+    predicted_at = Column(DateTime)
+    
+    # Metadata
+    created_at = Column(DateTime, default=datetime.utcnow)
+    data_split = Column(String(10))  # 'train', 'val', or 'test'
+
+
+class ModelPerformance(Base):
+    __tablename__ = 'model_performance'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    model_name = Column(String(100))
+    model_version = Column(String(50))
+    accuracy = Column(Float)
+    precision = Column(Float)
+    recall = Column(Float)
+    f1_score = Column(Float)
+    auc_roc = Column(Float)
+    training_time = Column(Float)
+    data_split = Column(String(10))  # 'train', 'val', or 'test'
+    notes = Column(Text)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class IMDBDatabaseManager:
+    def __init__(self, db_type='sqlite', db_path='imdb_sentiment.db', connection_string=None):
+        """
+        Initialize database manager
+        
+        Args:
+            db_type: 'sqlite' or 'postgresql'
+            db_path: Path for SQLite database
+            connection_string: Connection string for PostgreSQL
+        """
+        self.db_type = db_type
+        
+        if db_type == 'sqlite':
+            self.engine = create_engine(f'sqlite:///{db_path}')
+        elif db_type == 'postgresql':
+            self.engine = create_engine(connection_string)
+        else:
+            raise ValueError("db_type must be 'sqlite' or 'postgresql'")
+        
+        self.Session = sessionmaker(bind=self.engine)
+    
+    def create_tables(self):
+        """Create all tables"""
+        Base.metadata.create_all(self.engine)
+        print(f"Tables created successfully in {self.db_type} database!")
+    
+    def insert_reviews(self, df, data_split='train'):
+        """
+        Insert reviews from DataFrame
+        
+        Args:
+            df: DataFrame with processed reviews
+            data_split: 'train', 'val', or 'test'
+        """
+        session = self.Session()
+        
+        for _, row in df.iterrows():
+            review = IMDBReview(
+                review_text=row['review'],
+                cleaned_text=row.get('cleaned_text'),
+                processed_text=row.get('processed_text'),
+                sentiment=row.get('sentiment'),
+                label=row.get('label'),
+                char_count=row.get('char_count'),
+                word_count=row.get('word_count'),
+                avg_word_length=row.get('avg_word_length'),
+                exclamation_count=row.get('exclamation_count', 0),
+                question_count=row.get('question_count', 0),
+                uppercase_ratio=row.get('uppercase_ratio', 0.0),
+                positive_word_count=row.get('positive_word_count', 0),
+                negative_word_count=row.get('negative_word_count', 0),
+                data_split=data_split
+            )
+            session.add(review)
+        
+        session.commit()
+        session.close()
+        print(f"Inserted {len(df)} reviews into database")
+    
+    def save_model_performance(self, model_name, metrics, data_split='test', notes=''):
+        """
+        Save model performance metrics
+        
+        Args:
+            model_name: Name of the model
+            metrics: Dictionary with performance metrics
+            data_split: 'train', 'val', or 'test'
+            notes: Additional notes
+        """
+        session = self.Session()
+        
+        performance = ModelPerformance(
+            model_name=model_name,
+            model_version=metrics.get('version', '1.0'),
+            accuracy=metrics.get('accuracy'),
+            precision=metrics.get('precision'),
+            recall=metrics.get('recall'),
+            f1_score=metrics.get('f1_score'),
+            auc_roc=metrics.get('auc_roc'),
+            training_time=metrics.get('training_time'),
+            data_split=data_split,
+            notes=notes
+        )
+        
+        session.add(performance)
+        session.commit()
+        session.close()
+        print(f"Saved performance metrics for {model_name}")
+    
+    def get_reviews_by_split(self, data_split='train'):
+        """Get reviews by data split"""
+        session = self.Session()
+        reviews = session.query(IMDBReview).filter(IMDBReview.data_split == data_split).all()
+        session.close()
+        return reviews
+    
+    def get_model_comparison(self):
+        """Get comparison of all models"""
+        session = self.Session()
+        results = session.query(ModelPerformance).all()
+        session.close()
+        
+        # Convert to DataFrame
+        data = [{
+            'model_name': r.model_name,
+            'accuracy': r.accuracy,
+            'precision': r.precision,
+            'recall': r.recall,
+            'f1_score': r.f1_score,
+            'auc_roc': r.auc_roc,
+            'data_split': r.data_split,
+            'created_at': r.created_at
+        } for r in results]
+        
+        return pd.DataFrame(data)
+
+
+# Example usage
+if __name__ == "__main__":
+    # Initialize database
+    db_manager = IMDBDatabaseManager(db_type='sqlite', db_path='imdb_sentiment.db')
+    
+    # Create tables
+    db_manager.create_tables()
+    
+    # Load processed data
+    df = pd.read_csv('imdb_processed.csv')
+    
+    # Split data
+    from sklearn.model_selection import train_test_split
+    
+    train_df, temp_df = train_test_split(df, test_size=0.3, random_state=42, stratify=df['label'])
+    val_df, test_df = train_test_split(temp_df, test_size=0.5, random_state=42, stratify=temp_df['label'])
+    
+    # Insert into database
+    db_manager.insert_reviews(train_df, data_split='train')
+    db_manager.insert_reviews(val_df, data_split='val')
+    db_manager.insert_reviews(test_df, data_split='test')
+    
+    print("\nDatabase setup complete!")
+    print(f"Train: {len(train_df)}, Val: {len(val_df)}, Test: {len(test_df)}")
