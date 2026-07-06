@@ -1,0 +1,12 @@
+git init - What it does: Creates a hidden .git directory in your current folder, turning it into a local Git repository that can start tracking file changes.
+
+git add . - What it does: The dot . means "everything." This tells Git to stage all the files, notebooks, and reports in this folder, preparing them to be saved in the next snapshot.
+
+git commit -m "Initial capstone setup and project files" - What it does: Permanently saves a snapshot of my staged files to your local history. The -m flag lets me write a descriptive log message.
+
+git remote add origin https://github.com/gthammana-spec/MSDS640-coursework.git
+What it does: Creates a shortcut named origin pointing to the blank remote repository I just created on GitHub.
+
+git push -u origin main - What it does: Uploads my local commits up to the remote repository on GitHub. The -u flag sets main as the default branch for future updates, meaning next time I can just type git push.
+
+SSH Key - SHA256:yJq6Tjcrx6Ag8+dLrZq/GPoS9+/WeMtuxL5Nt5DN3Zw
