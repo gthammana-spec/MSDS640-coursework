@@ -1,0 +1,409 @@
+Ganesh Thammana
+MSDS-640-AG
+Dr. Sonboli
+
+Customer Churn Prediction Project Plan
+1. Dataset Description
+Dataset: ChurnZero_dataset_v1.csv
+Domain: Banking/Financial Services
+Size: 8,101 customers × 98 features
+Target Variable: churn (binary: 0 = retained, 1 = churned)
+Churn Rate: 16.07% (1,302 churned customers)
+
+Feature Categories:
+Demographics: age, gender, marital_status, education_level, occupation_type
+Financial: annual_income, account balances, credit utilization, loan amounts
+Behavioral: transaction counts, digital logins, app usage patterns
+Engagement: satisfaction_score, NPS, complaints, campaign responses
+Products: number_of_products, various account/loan flags (savings, credit card, loans, etc.)
+2. Database Selection
+Selected Database: SQLite
+
+Rationale:
+Lightweight & Serverless: No separate server process required
+Perfect for Dataset Size: Ideal for datasets under 10GB (our dataset is ~8MB)
+Single File Database: Easy to version control and share via GitHub
+Built-in Python Support: Native sqlite3 module in Python
+Portable: Cross-platform compatible
+Sufficient Performance: Adequate for analytical queries and ML data extraction
+Easy Setup: Minimal configuration required
+Alternative Considered:
+PostgreSQL was considered for production-scale deployment but deemed unnecessary for this academic project's scope.
+
+3. Problem Context & Background
+Business Problem:
+Customer churn in the banking industry represents a critical business challenge with significant financial implications:
+
+Acquisition Cost: Acquiring a new customer costs 5-25 times more than retaining an existing one
+Revenue Loss: Churned customers represent lost lifetime value and recurring revenue
+Competitive Pressure: Customers have more banking options than ever before
+Digital Transformation: Banks must adapt to changing customer expectations around digital services
+Project Goal:
+Develop a predictive model to identify customers at high risk of churning, enabling:
+
+Proactive retention interventions
+Targeted marketing campaigns
+Personalized customer service
+Resource optimization for retention efforts
+Impact:
+A successful churn prediction model can:
+
+Reduce customer attrition by 15-30%
+Increase customer lifetime value
+Improve ROI on retention campaigns
+Enhance customer satisfaction through proactive engagement
+4. Hypothesis
+Primary Hypothesis:
+Customer churn can be accurately predicted using a combination of digital engagement patterns, transaction behavior, account balance trends, satisfaction metrics, and product holdings.
+
+Specific Sub-Hypotheses:
+Digital Engagement Hypothesis:
+Customers with declining digital engagement (fewer app logins, lower digital transaction ratios) are significantly more likely to churn.
+Balance Decline Hypothesis:
+Customers experiencing declining account balances (>10% decrease) have substantially higher churn risk.
+Satisfaction Hypothesis:
+Lower satisfaction scores and NPS ratings strongly correlate with increased churn probability.
+Product Holdings Hypothesis:
+Customers with fewer banking products (1-2 products) have higher churn rates compared to those with diversified product portfolios (4+ products).
+Contact Frequency Hypothesis:
+Longer gaps since last customer contact (>60 days) increase churn likelihood.
+Transaction Activity Hypothesis:
+Customers with low transaction activity are at higher risk of churning.
+5. Experiment Plan
+Phase 1: Data Preprocessing (Week 1-2)
+Tasks:
+
+Missing Value Treatment:
+Impute app_rating_given (56% missing) with median or create binary flag
+Verify no other missing values
+Feature Encoding:
+One-hot encoding for nominal categorical variables (gender, region, marital_status)
+Label encoding for ordinal variables (education_level, income_category)
+Binary flags already present for product holdings
+Feature Scaling:
+StandardScaler for numerical features
+Preserve interpretability for tree-based models
+Train-Test Split:
+80/20 split
+Stratified sampling to maintain churn rate distribution
+Set random seed for reproducibility
+Handle Class Imbalance:
+Apply SMOTE (Synthetic Minority Over-sampling Technique) to training set only
+Alternative: Use class weights in model training
+Compare both approaches
+Phase 2: Feature Engineering (Week 2-3)
+New Features to Create:
+
+Interaction Features:
+balance_decline × digital_engagement
+satisfaction_score × number_of_products
+transaction_count × tenure_months
+Aggregate Features:
+total_product_count (sum of all product flags)
+total_loan_amount (sum of all loan amounts)
+engagement_score (composite of digital metrics)
+Binned Features:
+Age groups (25-35, 36-45, 46-55, 56+)
+Income brackets (already present but can refine)
+Tenure categories (new, established, long-term)
+Ratio Features:
+balance_to_income_ratio
+transaction_value_per_count
+complaint_resolution_rate
+Feature Selection:
+Correlation analysis (remove features with |r| > 0.95)
+Recursive Feature Elimination (RFE)
+Model-based feature importance
+Phase 3: Model Development (Week 3-4)
+Baseline Models:
+
+Logistic Regression
+Purpose: Baseline, interpretable coefficients
+Hyperparameters: C (regularization), penalty (L1/L2)
+Expected Performance: 70-75% accuracy
+Random Forest
+Purpose: Non-linear relationships, feature importance
+Hyperparameters: n_estimators, max_depth, min_samples_split
+Expected Performance: 75-80% accuracy
+XGBoost (Primary Model)
+Purpose: Best predictive performance
+Hyperparameters: learning_rate, max_depth, n_estimators, subsample, colsample_bytree
+Expected Performance: 80-85% accuracy
+LightGBM
+Purpose: Faster training, comparable performance to XGBoost
+Hyperparameters: learning_rate, num_leaves, max_depth
+Expected Performance: 80-85% accuracy
+Neural Network (Optional)
+Purpose: Deep learning comparison
+Architecture: 3-4 hidden layers with dropout
+Expected Performance: 78-83% accuracy
+Phase 4: Hyperparameter Tuning (Week 4-5)
+Approach:
+
+Method: RandomizedSearchCV (faster than GridSearch)
+Cross-Validation: 5-fold stratified CV
+Optimization Metric: F1-score (balanced for precision/recall)
+Iterations: 100 random combinations per model
+XGBoost Hyperparameter Grid:
+
+python
+Copy
+{
+    'learning_rate': [0.01, 0.05, 0.1, 0.2],
+    'max_depth': [3, 5, 7, 9],
+    'n_estimators': [100, 200, 300, 500],
+    'subsample': [0.6, 0.8, 1.0],
+    'colsample_bytree': [0.6, 0.8, 1.0],
+    'gamma': [0, 0.1, 0.5],
+    'scale_pos_weight': [1, 3, 5]  # For class imbalance
+}
+Random Forest Hyperparameter Grid:
+
+python
+Copy
+{
+    'n_estimators': [100, 200, 300, 500],
+    'max_depth': [10, 20, 30, None],
+    'min_samples_split': [2, 5, 10],
+    'min_samples_leaf': [1, 2, 4],
+    'max_features': ['sqrt', 'log2', None]
+}
+Phase 5: Model Evaluation (Week 5-6)
+Evaluation Metrics:
+
+Classification Metrics:
+Accuracy (overall correctness)
+Precision (of predicted churners, how many actually churned)
+Recall (of actual churners, how many did we catch)
+F1-Score (harmonic mean of precision/recall)
+ROC-AUC (discrimination ability)
+Business Metrics:
+Cost of False Negatives (missed churners)
+Cost of False Positives (unnecessary retention efforts)
+Expected ROI of retention campaigns
+Confusion Matrix Analysis:
+True Positives: Correctly identified churners
+False Positives: Incorrectly flagged as churners
+True Negatives: Correctly identified retained customers
+False Negatives: Missed churners (most costly!)
+Evaluation Process:
+
+Train final models on full training set
+Evaluate on held-out test set
+Generate classification reports
+Plot ROC curves for all models
+Compare performance across metrics
+Select best model based on F1-score and business cost
+Phase 6: Interpretation & Insights (Week 6-7)
+Analysis Tasks:
+
+Feature Importance:
+SHAP (SHapley Additive exPlanations) values
+Permutation importance
+Partial dependence plots
+Customer Segmentation:
+Identify high-risk customer profiles
+Rank customers by churn probability
+Create risk tiers (low, medium, high, critical)
+Actionable Insights:
+Top 5 factors driving churn
+Recommended interventions for each risk tier
+Expected impact of retention strategies
+Model Explainability:
+Individual prediction explanations
+What-if scenarios (e.g., "If customer increases digital logins by 50%, how does churn risk change?")
+6. Machine Learning Methods
+6.1 Problem Type
+Supervised Binary Classification: Predict whether a customer will churn (1) or be retained (0)
+
+6.2 Selected Algorithms
+1. Logistic Regression (Baseline)
+Pros:
+
+Fast training and prediction
+Highly interpretable coefficients
+Provides probability scores
+Works well with linearly separable data
+Cons:
+
+Assumes linear relationships
+May underperform with complex patterns
+Sensitive to feature scaling
+Use Case: Baseline model and coefficient interpretation
+
+2. Random Forest Classifier
+Pros:
+
+Handles non-linear relationships
+Robust to outliers and missing values
+Provides feature importance
+Minimal hyperparameter tuning needed
+Reduces overfitting through ensemble
+Cons:
+
+Less interpretable than logistic regression
+Can be slow on large datasets
+May overfit with too many trees
+Use Case: Strong baseline, feature selection, non-linear patterns
+
+3. XGBoost (Primary Model)
+Pros:
+
+State-of-the-art performance on tabular data
+Built-in regularization (L1/L2)
+Handles missing values automatically
+Excellent with imbalanced datasets (scale_pos_weight)
+Fast training with parallel processing
+Feature importance built-in
+Cons:
+
+Requires careful hyperparameter tuning
+Can overfit if not regularized properly
+Less interpretable than linear models
+Use Case: Best predictive performance, production deployment
+
+4. LightGBM
+Pros:
+
+Faster training than XGBoost
+Lower memory usage
+Handles large datasets efficiently
+Comparable performance to XGBoost
+Cons:
+
+Can overfit on small datasets
+Requires hyperparameter tuning
+Use Case: Alternative to XGBoost, faster experimentation
+
+5. Neural Network (Optional)
+Pros:
+
+Can capture highly complex patterns
+Flexible architecture
+Good for very large datasets
+Cons:
+
+Requires more data
+Black box (less interpretable)
+Prone to overfitting
+Requires careful architecture design
+Use Case: Comparison with tree-based models, research purposes
+
+6.3 Handling Class Imbalance
+Problem: Only 16% of customers churned (imbalanced dataset)
+
+Solutions:
+
+SMOTE (Synthetic Minority Over-sampling Technique)
+Generate synthetic examples of minority class
+Apply only to training set
+Prevents overfitting from simple duplication
+Class Weights
+Assign higher weight to minority class
+Built-in parameter in most algorithms
+class_weight='balanced' in sklearn
+Threshold Tuning
+Adjust classification threshold (default 0.5)
+Optimize for business cost function
+Trade-off between precision and recall
+Stratified Sampling
+Maintain class distribution in train/test split
+Ensure representative evaluation
+Chosen Approach: Combine SMOTE with class weights and threshold tuning
+
+6.4 Evaluation Strategy
+Primary Metric: F1-Score (balances precision and recall)
+
+Secondary Metrics:
+
+Recall: Prioritize catching actual churners (minimize false negatives)
+Precision: Avoid wasting resources on false alarms
+ROC-AUC: Overall model discrimination ability
+Business Cost Function:
+
+Cost = (FN × Cost_of_Lost_Customer) + (FP × Cost_of_Retention_Campaign)
+
+Where:
+- FN = False Negatives (missed churners)
+- FP = False Positives (unnecessary retention efforts)
+- Cost_of_Lost_Customer = $5,000 (estimated lifetime value)
+- Cost_of_Retention_Campaign = $100 (cost of intervention)
+Threshold Selection:
+
+Optimize threshold to minimize business cost
+Likely favor higher recall (catch more churners) even at cost of lower precision
+7. Expected Outcomes
+7.1 Model Performance Targets
+Accuracy: 80-85%
+Recall: 75-80% (catch most churners)
+Precision: 60-70% (acceptable false positive rate)
+F1-Score: 70-75%
+ROC-AUC: 85-90%
+7.2 Business Impact
+Churn Reduction: 20-30% reduction in customer attrition
+ROI: 5:1 return on retention campaign investment
+Customer Lifetime Value: 15-25% increase through retention
+7.3 Deliverables
+Trained and validated churn prediction model
+Feature importance analysis and insights
+Customer risk segmentation (low/medium/high/critical)
+Actionable retention recommendations
+Model deployment strategy
+Monitoring and retraining plan
+8. Timeline
+Week	Phase	Tasks
+1-2	Data Preprocessing	Missing values, encoding, scaling, train-test split
+2-3	Feature Engineering	Create new features, feature selection
+3-4	Model Development	Train baseline models, initial evaluation
+4-5	Hyperparameter Tuning	Optimize top 2-3 models
+5-6	Model Evaluation	Final testing, comparison, selection
+6-7	Interpretation & Insights	Feature importance, business recommendations
+7-8	Documentation & Presentation	Final report, presentation, deployment plan
+9. Success Criteria
+Technical Success:
+
+✅ F1-Score > 70%
+✅ Recall > 75% (catch most churners)
+✅ ROC-AUC > 85%
+✅ Model generalizes well to test set (no overfitting)
+Business Success:
+
+✅ Identify top 3-5 actionable churn drivers
+✅ Segment customers into risk tiers
+✅ Provide specific retention recommendations
+✅ Demonstrate positive ROI potential
+Academic Success:
+
+✅ Comprehensive data exploration and visualization
+✅ Proper ML methodology (train-test split, cross-validation, etc.)
+✅ Multiple model comparison
+✅ Clear documentation and reproducible code
+✅ Insightful interpretation of results
+10. Potential Challenges & Mitigation
+Challenge 1: Class Imbalance
+Mitigation: SMOTE, class weights, threshold tuning, focus on F1/Recall
+
+Challenge 2: Feature Multicollinearity
+Mitigation: Correlation analysis, VIF calculation, feature selection
+
+Challenge 3: Overfitting
+Mitigation: Cross-validation, regularization, early stopping, feature selection
+
+Challenge 4: Interpretability vs Performance Trade-off
+Mitigation: Use SHAP values for complex models, maintain logistic regression baseline
+
+Challenge 5: Computational Resources
+Mitigation: Use LightGBM for faster training, sample data for initial experiments
+
+11. Future Extensions
+Real-time Prediction: Deploy model as API for real-time churn scoring
+Temporal Analysis: Incorporate time-series features (trend analysis)
+Customer Segmentation: Cluster analysis for personalized retention strategies
+A/B Testing: Test retention interventions on high-risk customers
+Model Monitoring: Track model performance over time, retrain as needed
+Explainable AI: Develop customer-facing explanations for retention offers
+12. References & Resources
+Dataset: ChurnZero_dataset_v1.csv (banking customer data)
+Database: SQLite (customer_churn.db)
+Libraries: pandas, numpy, scikit-learn, xgboost, lightgbm, matplotlib, seaborn, shap
+Tools: Python 3.8+, Jupyter Notebook, Git/GitHub
